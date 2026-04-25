@@ -4,12 +4,13 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define LENGTH 64
+#define LENGTH 128
+#define SIG_NO_CUR_DIR 1
 
-// TODO: execute commands as child process
-// TODO: add command line flag parsing
+// TODO :: execute commands as child process or add my own
+// TODO :: add command line flag parsing
 
-int main() {
+int main(int argc, char** argv) {
 
   char input[LENGTH];
 
@@ -23,12 +24,11 @@ int main() {
     char buffer[LENGTH];
     if(getcwd(buffer, LENGTH) == NULL) {
       perror("failed to get current directory");
-      exit(1);
+      exit(SIG_NO_CUR_DIR);
     }
 
     // print listing
     printf("[%s ] ", buffer);
-
 
     // read input
     if(fgets(input,LENGTH,stdin) == NULL) {
@@ -42,10 +42,6 @@ int main() {
       input[length-1] = '\0'; 
     }
 
-    // TODO: tokenize input based on spaces
-    /* strtok(input, " "); */
-
-    
     // quit action
     if(strcmp(input, "quit") == 0) {
       perror("\nquitting shell\n");
@@ -57,19 +53,6 @@ int main() {
       printf("\nCurrent shell works with basic UNIX commands, through execvp() function\n");
     }
 
-
-    // interpret input
-    /* pid_t pid = fork(); */
-    /* if(pid == 0) { */
-    /*   execvp(args[0], args); */
-    /*   perror("exec failed"); */
-    /*   exit(1); */
-    /* } */
-    /* else if (pid > 1) { */
-      
-    /* } */
-
-
     // flush buffer
     size_t len = sizeof(input);
     memset(input, 0x00, len);
@@ -78,4 +61,6 @@ int main() {
 
   return 0;
 }
+
+
 

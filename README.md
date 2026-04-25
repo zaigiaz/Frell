@@ -3,6 +3,6 @@ This is an implementation of a shell in C, I want to support basic File and Dire
 and later on do more complicated shell commands
 
 # TODO:
-TODO: add cwd command to get current directory
-TODO: use fork() to execute commands as child processes
-TODO: add command line flag parsing
+- make forked child process for each command, and a command line parser
+- Follow This: https://sourceware.org/glibc/manual/latest/html_node/Implementing-a-Shell.html
+
