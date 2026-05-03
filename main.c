@@ -3,25 +3,30 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <signal.h>
 
-#define LENGTH 128
+#define LENGTH 256
 #define SIG_NO_CUR_DIR 1
 
-// TODO :: execute commands as child process or add my own
-// TODO :: add command line flag parsing
+// TOOD :: use strtok() method to split flags and commands
+// TODO :: use execvp to handle things
+// TODO :: implement signals from gist to handle diff program outputs
+// TODO :: implement jobs and job handling
 
-int main(int argc, char** argv) {
+int main() {
 
   char input[LENGTH];
 
-  printf("-----------------------------------");
-  printf("\nWelcome to Frell: Friendly Shell!\n");
-  printf("      Commands: quit, help         \n");
-  printf("-----------------------------------\n");
+  printf("------------------------------------------------\n");
+  printf("      Welcome to Frell: Friendly Shell!\n       ");
+  printf("      Commands: Frell-Quit, Frell-Help         \n");
+  printf("-----------------------------------------------\n");
   
+  // Main loop of program
   while(true) {
 
     char buffer[LENGTH];
+
     if(getcwd(buffer, LENGTH) == NULL) {
       perror("failed to get current directory");
       exit(SIG_NO_CUR_DIR);
@@ -31,7 +36,7 @@ int main(int argc, char** argv) {
     printf("[%s ] ", buffer);
 
     // read input
-    if(fgets(input,LENGTH,stdin) == NULL) {
+    if(fgets(input, LENGTH, stdin) == NULL) {
       perror("failed to get standard input");
       exit(1);
     }
@@ -43,18 +48,19 @@ int main(int argc, char** argv) {
     }
 
     // quit action
-    if(strcmp(input, "quit") == 0) {
+    if(strcmp(input, "Frell-Quit") == 0) {
       perror("\nquitting shell\n");
       exit(1);
     }
 
     // help action
-    if(strcmp(input, "help") == 0) {
+    if(strcmp(input, "Frell-Help") == 0) {
       printf("\nCurrent shell works with basic UNIX commands, through execvp() function\n");
     }
 
     // flush buffer
     size_t len = sizeof(input);
+    
     memset(input, 0x00, len);
   }
 
