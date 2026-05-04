@@ -8,7 +8,12 @@
 #define LENGTH 256
 #define SIG_NO_CUR_DIR 1
 
-// TOOD :: use strtok() method to split flags and commands
+enum shell_actions {QUIT, HELP};
+
+void other_actions(const char *input);
+enum shell_actions StringtoEnum(const char* str);
+
+// TODO :: use strtok() method to split flags and commands
 // TODO :: use execvp to handle things
 // TODO :: implement signals from gist to handle diff program outputs
 // TODO :: implement jobs and job handling
@@ -19,7 +24,7 @@ int main() {
 
   printf("------------------------------------------------\n");
   printf("      Welcome to Frell: Friendly Shell!\n       ");
-  printf("      Commands: Frell-Quit, Frell-Help         \n");
+  printf("      Commands:      Quit,  Help                \n");
   printf("-----------------------------------------------\n");
   
   // Main loop of program
@@ -46,17 +51,9 @@ int main() {
     if(length > 0 && input[length-1] == '\n') { 
       input[length-1] = '\0'; 
     }
-
-    // quit action
-    if(strcmp(input, "Frell-Quit") == 0) {
-      perror("\nquitting shell\n");
-      exit(1);
-    }
-
-    // help action
-    if(strcmp(input, "Frell-Help") == 0) {
-      printf("\nCurrent shell works with basic UNIX commands, through execvp() function\n");
-    }
+    
+    //actions you can take
+    other_actions(input);
 
     // flush buffer
     size_t len = sizeof(input);
@@ -68,5 +65,24 @@ int main() {
   return 0;
 }
 
+// Take shell input and convert to a command
+void other_actions(const char* input) {
 
+  int inputAction = StringtoEnum(input);
 
+  switch (inputAction) {
+  case QUIT: perror("\nquitting shell\n"); exit(1);
+    break;
+  case HELP: printf("\nCurrent shell works with basic UNIX commands, through execvp() function\n");
+    break;
+  default: 
+    break;
+  }
+}
+
+// Take a string from user-input and convert to int
+enum shell_actions StringtoEnum(const char* str) {
+  if(strcmp(str, "Quit") == 0) { return QUIT; }
+  if(strcmp(str, "Help") == 0) { return HELP; }
+  return -1;
+}
