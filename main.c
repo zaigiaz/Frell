@@ -17,7 +17,6 @@ void change_directory(const char *input);
 bool if_background(const char* input);
 enum shell_actions StringtoEnum(const char* str);
 
-// TODO :: implement cd command with chdir() and other non-implemented shell functions
 // TODO :: make main fork loop into seperate function / structure
 // TODO :: implement jobs and job handling
 // TODO :: implement signals from gist to handle diff program outputs
@@ -81,10 +80,15 @@ int main() {
       // null-terminate array
       args[arg_count] = NULL;
 
+      // check for cd and run
+      if (strcmp(args[0], "cd") == 0) {
+	change_directory(args[1]);
+      } else {
       // execute command
       execvp(args[0], args);
       perror("exec failed");
       exit(1);
+      }
     } 
     
     // else if we are parent_process
@@ -126,7 +130,7 @@ void other_actions(const char* input) {
   int inputAction = StringtoEnum(input);
 
   switch (inputAction) {
-  case QUIT: perror("\nquitting shell\n"); exit(1);
+  case QUIT: perror("\nquitting shell\n"); exit(0);
     break;
   case HELP: printf("\nCurrent shell works with basic UNIX commands, through execvp() function\n");
     break;
@@ -144,14 +148,14 @@ enum shell_actions StringtoEnum(const char* str) {
 }
 
 
+// changes the directory
 void change_directory(const char *input) {
-  printf("implement function here");
 
   if (chdir(input) == 0) {
-    printf("succesful");
+    printf("succesful\n");
   } else {
+    // TODO :: Error checking here for if dir exists or not
     perror("couldnt change directory");
   }
-
 }
 
