@@ -13,19 +13,24 @@
 enum shell_actions { QUIT, HELP };
 
 void other_actions(const char *input);
+void change_directory(const char *input);
 bool if_background(const char* input);
 enum shell_actions StringtoEnum(const char* str);
 
+// TODO :: implement cd command with chdir() and other non-implemented shell functions
 // TODO :: make main fork loop into seperate function / structure
-// TODO :: implement signals from gist to handle diff program outputs
 // TODO :: implement jobs and job handling
+// TODO :: implement signals from gist to handle diff program outputs
+// TODO :: implement env variables 
+// TODO :: implement Piping
+// TODO :: implement Memory Management
 
 int main() {
 
   char input[LENGTH];
 
   printf("------------------------------------------------\n");
-  printf("      Welcome to Frell: Friendly Shell!\n       ");
+  printf("      Welcome to Frell: Friendly Shell!         \n");
   printf("      Commands:      Quit,  Help                \n");
   printf("-----------------------------------------------\n");
   
@@ -76,6 +81,7 @@ int main() {
       // null-terminate array
       args[arg_count] = NULL;
 
+      // execute command
       execvp(args[0], args);
       perror("exec failed");
       exit(1);
@@ -136,3 +142,16 @@ enum shell_actions StringtoEnum(const char* str) {
   if(strcmp(str, "Help") == 0) { return HELP; }
   return -1;
 }
+
+
+void change_directory(const char *input) {
+  printf("implement function here");
+
+  if (chdir(input) == 0) {
+    printf("succesful");
+  } else {
+    perror("couldnt change directory");
+  }
+
+}
+

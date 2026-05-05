@@ -7,7 +7,6 @@ Here are some resources that I am using:
 - Main Link :: https://valerius-petrini.vercel.app/blog/2025-06-29-fork-linux
 - Similar Project :: https://github.com/Landixbtw/oshell/tree/main
 
-
 * Next Steps
 
 If you want to continue building out your shell, you'll want to do a few more things before it's ready:
