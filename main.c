@@ -9,6 +9,14 @@
 
 #define LENGTH 256
 #define SIG_NO_CUR_DIR 1
+#define MAX_JOBS 64
+
+// used to implement jobs
+typedef struct {
+  pid_t pid;
+  char command[LENGTH];
+  bool running;
+} Job;
 
 enum shell_actions { QUIT, HELP };
 
@@ -16,13 +24,21 @@ void other_actions(const char *input);
 void change_directory(const char *input);
 bool if_background(const char* input);
 enum shell_actions StringtoEnum(const char* str);
+void add_job(pid_t pid, const char* cmd);
+char* clean_job(const char* input);
+void reap_background_jobs(void);
+
+Job jobs[MAX_JOBS];
+size_t job_count = 0;
+
+// TODO :: review code and code structure
 
 // TODO :: make main fork loop into seperate function / structure
-// TODO :: implement jobs and job handling
-// TODO :: implement signals from gist to handle diff program outputs
+
+// TODO :: implement signals from gist to handle diff program outputs (sigaction struct)
 // TODO :: implement env variables 
 // TODO :: implement Piping
-// TODO :: implement Memory Management
+// TODO :: implement Memory Management better
 
 int main() {
 
@@ -35,6 +51,8 @@ int main() {
   
   // Main loop of program
   while(true) {
+
+    reap_background_jobs();
 
     char buffer[LENGTH];
 
@@ -63,34 +81,45 @@ int main() {
 
     // check to see if background process
     bool bg = if_background(input);
+    char *cleaned_cmd = clean_job(input);
 
-    // fork the process and tokenize for arguments
-    pid_t pid = fork();
-    if (pid == 0) {
-      char *args[64];
-      size_t arg_count = 0;
-      char *token = strtok(input, " ");
+    // tokenize and parse input
+    char *args[64];
+    size_t arg_count = 0;
+    char *token = strtok(input, " ");
 
-      // get each argument for the command in input
-      while (token != NULL && arg_count < 63) {
-	args[arg_count++] = token;
-	token = strtok(NULL, " ");
-      }
+    // get each argument for the command in input
+    while (token != NULL && arg_count < 63) {
+      args[arg_count++] = token;
+      token = strtok(NULL, " ");
+    }
       
-      // null-terminate array
-      args[arg_count] = NULL;
+    // null-terminate array
+    args[arg_count] = NULL;
 
-      // check for cd and run
-      if (strcmp(args[0], "cd") == 0) {
+    // check if user hit enter and returned null input
+    if (args[0] == NULL) {
+      free(cleaned_cmd);
+      continue;
+    }
+
+    // check for cd and run
+    if (args[0] != NULL && strcmp(args[0], "cd") == 0) {
+      if (args[1]) {
 	change_directory(args[1]);
       } else {
+	printf("cd: missing argument\n");
+      }
+      continue;
+    }
+
+    pid_t pid = fork();
+    if (pid == 0) {
       // execute command
       execvp(args[0], args);
       perror("exec failed");
       exit(1);
-      }
-    } 
-    
+    }     
     // else if we are parent_process
     else if (pid > 0) {
       int status;
@@ -98,7 +127,10 @@ int main() {
         waitpid(pid, &status, 0);
         printf(WIFEXITED(status) ? "Success\n" : "Failure\n");
       } else {
-	printf("child started in background");
+        if (bg) {
+          add_job(pid, cleaned_cmd);
+          printf("[+] Started background job [%d] %s\n", pid, cleaned_cmd);
+        }
       }
     }
 
@@ -106,11 +138,11 @@ int main() {
       perror("fork failed");
     }
 
-    // flush buffer and reset
+    // flush buffer and reset    
     size_t len = sizeof(input);
     memset(input, 0x00, len);
+    free(cleaned_cmd);
   }
-
   return 0;
 }
 
@@ -120,7 +152,6 @@ bool if_background(const char* input) {
   if (input[strlen(input) - 1] == '&') {
     return true;
   }
-
   return false;
 }
 
@@ -152,10 +183,52 @@ enum shell_actions StringtoEnum(const char* str) {
 void change_directory(const char *input) {
 
   if (chdir(input) == 0) {
-    printf("succesful\n");
+    printf("succesful change directory\n");
   } else {
     // TODO :: Error checking here for if dir exists or not
     perror("couldnt change directory");
   }
 }
 
+
+// add a job to the Jobs array
+void add_job(pid_t pid, const char *cmd) {
+  if (job_count >= MAX_JOBS) {
+    fprintf(stderr, "too many jobs in the jobs_array");
+    return;
+  }
+
+  jobs[job_count].pid = pid;
+  strncpy(jobs[job_count].command, cmd, LENGTH-1);
+  jobs[job_count].running = true;
+  job_count++;
+}
+
+// if the command is a job then clean the '&' from it
+char *clean_job(const char *input) {
+  char *cmd_clean = malloc(LENGTH);
+  strncpy(cmd_clean, input, LENGTH-1);
+  if (cmd_clean[strlen(cmd_clean)-1] == '&') {
+    cmd_clean[strlen(cmd_clean)-1] = '\0';
+  }
+  return cmd_clean;
+}
+
+// clean up all background jobs that are in the process table
+void reap_background_jobs(void) {
+  for (size_t i = 0; i < job_count; i++) {
+    if (jobs[i].running) {
+      int status;
+      pid_t result = waitpid(jobs[i].pid, &status, WNOHANG);
+      if (result > 0) {
+        printf("[%zu] Done: %s\n", i + 1, jobs[i].command);
+        // Shift remaining jobs down
+        for (size_t j = i; j < job_count - 1; j++) {
+          jobs[j] = jobs[j + 1];
+        }
+        job_count--;
+        i--;  // Recheck this index
+      }
+    }
+  }
+}
