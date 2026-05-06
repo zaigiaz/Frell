@@ -26,15 +26,12 @@ bool if_background(const char* input);
 enum shell_actions StringtoEnum(const char* str);
 void add_job(pid_t pid, const char* cmd);
 char* clean_job(const char* input);
-void reap_background_jobs(void);
+void sigchild_handler(int signum);
 
 Job jobs[MAX_JOBS];
 size_t job_count = 0;
 
-// TODO :: review code and code structure
-
-// TODO :: make main fork loop into seperate function / structure
-
+// TODO :: review code and code structure, make header file?
 // TODO :: implement signals from gist to handle diff program outputs (sigaction struct)
 // TODO :: implement env variables 
 // TODO :: implement Piping
@@ -48,11 +45,14 @@ int main() {
   printf("      Welcome to Frell: Friendly Shell!         \n");
   printf("      Commands:      Quit,  Help                \n");
   printf("-----------------------------------------------\n");
-  
+
+  // Instantiate Signal Handling for sigchild
+  struct sigaction sa;
+  sa.sa_handler = sigchild_handler;
+  sigaction(SIGCHLD, &sa, NULL);
+
   // Main loop of program
   while(true) {
-
-    reap_background_jobs();
 
     char buffer[LENGTH];
 
@@ -115,17 +115,16 @@ int main() {
 
     pid_t pid = fork();
     if (pid == 0) {
-      // execute command
       execvp(args[0], args);
       perror("exec failed");
       exit(1);
     }     
-    // else if we are parent_process
     else if (pid > 0) {
       int status;
       if (!bg) {
         waitpid(pid, &status, 0);
-        printf(WIFEXITED(status) ? "Success\n" : "Failure\n");
+        /* printf(WIFEXITED(status) ? "Success\n" : "Failure\n"); */
+	if(!WIFEXITED(status)) { printf("command failed"); }
       } else {
         if (bg) {
           add_job(pid, cleaned_cmd);
@@ -214,21 +213,22 @@ char *clean_job(const char *input) {
   return cmd_clean;
 }
 
-// clean up all background jobs that are in the process table
-void reap_background_jobs(void) {
-  for (size_t i = 0; i < job_count; i++) {
-    if (jobs[i].running) {
-      int status;
-      pid_t result = waitpid(jobs[i].pid, &status, WNOHANG);
-      if (result > 0) {
-        printf("[%zu] Done: %s\n", i + 1, jobs[i].command);
-        // Shift remaining jobs down
+// signal handling job cleanup and exiting
+void sigchild_handler(int signum) {
+  pid_t pid;
+
+  while ((pid = waitpid(-1, &signum, WNOHANG)) > 0) {
+    for(size_t i = 0; i < MAX_JOBS; i++) {
+      if(jobs[i].pid == pid) {
+	printf("[%zu] Done: %s\n", i + 1, jobs[i].command);
+	
+	// Shift remaining jobs down and exit out of for-loop
         for (size_t j = i; j < job_count - 1; j++) {
           jobs[j] = jobs[j + 1];
         }
-        job_count--;
-        i--;  // Recheck this index
-      }
+	job_count--;
+	break;
+      }      
     }
   }
 }
