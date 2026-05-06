@@ -27,15 +27,16 @@ enum shell_actions StringtoEnum(const char* str);
 void add_job(pid_t pid, const char* cmd);
 char* clean_job(const char* input);
 void sigchild_handler(int signum);
+/* void sigint_handler(int sig);  */
+/* void sigtstp_handler(int sig); */
 
 Job jobs[MAX_JOBS];
 size_t job_count = 0;
 
 // TODO :: review code and code structure, make header file?
-// TODO :: implement signals from gist to handle diff program outputs (sigaction struct)
-// TODO :: implement env variables 
+// TODO :: finish rest of signal handling 
 // TODO :: implement Piping
-// TODO :: implement Memory Management better
+// TODO :: implement env variables 
 
 int main() {
 
