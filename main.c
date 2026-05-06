@@ -26,15 +26,16 @@ bool if_background(const char* input);
 enum shell_actions StringtoEnum(const char* str);
 void add_job(pid_t pid, const char* cmd);
 char* clean_job(const char* input);
+void start_sig_handles();
 void sigchild_handler(int signum);
-/* void sigint_handler(int sig);  */
-/* void sigtstp_handler(int sig); */
+void sigint_handler(int sig);
+void sigtstp_handler(int sig);
 
 Job jobs[MAX_JOBS];
 size_t job_count = 0;
+pid_t fg_pid = -1;
 
 // TODO :: review code and code structure, make header file?
-// TODO :: finish rest of signal handling 
 // TODO :: implement Piping
 // TODO :: implement env variables 
 
@@ -47,10 +48,7 @@ int main() {
   printf("      Commands:      Quit,  Help                \n");
   printf("-----------------------------------------------\n");
 
-  // Instantiate Signal Handling for sigchild
-  struct sigaction sa;
-  sa.sa_handler = sigchild_handler;
-  sigaction(SIGCHLD, &sa, NULL);
+  start_sig_handles();
 
   // Main loop of program
   while(true) {
@@ -63,7 +61,7 @@ int main() {
     }
 
     // print listing
-    printf("[%s ] ", buffer);
+    printf("[%s $] ", buffer);
 
     // read input
     if(fgets(input, LENGTH, stdin) == NULL) {
@@ -123,8 +121,9 @@ int main() {
     else if (pid > 0) {
       int status;
       if (!bg) {
+        fg_pid = pid;
         waitpid(pid, &status, 0);
-        /* printf(WIFEXITED(status) ? "Success\n" : "Failure\n"); */
+	fg_pid = -1;
 	if(!WIFEXITED(status)) { printf("command failed"); }
       } else {
         if (bg) {
@@ -145,6 +144,18 @@ int main() {
   }
   return 0;
 }
+
+
+// handle all the sigaction structs and thier signals
+void start_sig_handles() {
+  struct sigaction sa;
+  sa.sa_handler = sigchild_handler;
+  sigaction(SIGCHLD, &sa, NULL);
+
+  sa.sa_handler = sigint_handler;
+  sigaction(SIGINT, &sa, NULL);  
+}
+
 
 bool if_background(const char* input) {
   if (!input || *input == '\0') return false;
@@ -179,7 +190,6 @@ enum shell_actions StringtoEnum(const char* str) {
 }
 
 
-// changes the directory
 void change_directory(const char *input) {
 
   if (chdir(input) == 0) {
@@ -190,8 +200,6 @@ void change_directory(const char *input) {
   }
 }
 
-
-// add a job to the Jobs array
 void add_job(pid_t pid, const char *cmd) {
   if (job_count >= MAX_JOBS) {
     fprintf(stderr, "too many jobs in the jobs_array");
@@ -232,4 +240,16 @@ void sigchild_handler(int signum) {
       }      
     }
   }
+}
+
+// handle sigint signal
+void sigint_handler(int sig) {
+  if(fg_pid > 0) {
+    kill(fg_pid, SIGTERM);
+  }
+}
+
+// handle sigstp signal 
+void sigtstp_handler(int sig) {
+  // TODO :: implement handling here
 }
