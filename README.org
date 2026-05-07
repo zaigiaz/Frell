@@ -6,13 +6,12 @@ and later on do more complicated shell commands, things like piping, Boolean exp
 Here are some resources that I am using:
 - Main Link :: https://valerius-petrini.vercel.app/blog/2025-06-29-fork-linux
 - Similar Project :: https://github.com/Landixbtw/oshell/tree/main
+- Pipes in C :: https://cs-uob.github.io/COMSM0085/exercises/part1/posix4/cpipe.html
+- Pipes in C :: https://faculty.cs.niu.edu/~hutchins/csci480/linuxpipe.htm
 
 * Next Steps
 
-If you want to continue building out your shell, you'll want to do a few more things before it's ready:
-
+- new exec func? https://linux.die.net/man/2/execve
 - Try experimenting with different exec variants like execlp.
-- Handle builtin commands, like cd, exit, and jobs. These can't be run by execvp so you'll need to handle them yourself
-- Handle Ctrl-Z, which stops a foreground process.
 - Implement piping with |, where the output of one command is the input for another. To implement piping, you'll need to use pipe() and dup2() to redirect output from one command to the input of another.
-
+- Environment Variables

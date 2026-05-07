@@ -26,7 +26,7 @@ bool if_background(const char* input);
 enum shell_actions StringtoEnum(const char* str);
 void add_job(pid_t pid, const char* cmd);
 char* clean_job(const char* input);
-void start_sig_handles();
+void start_sig_handling();
 void sigchild_handler(int signum);
 void sigint_handler(int sig);
 void sigtstp_handler(int sig);
@@ -42,13 +42,12 @@ pid_t fg_pid = -1;
 int main() {
 
   char input[LENGTH];
+  start_sig_handling();
 
   printf("------------------------------------------------\n");
   printf("      Welcome to Frell: Friendly Shell!         \n");
   printf("      Commands:      Quit,  Help                \n");
   printf("-----------------------------------------------\n");
-
-  start_sig_handles();
 
   // Main loop of program
   while(true) {
@@ -147,7 +146,7 @@ int main() {
 
 
 // handle all the sigaction structs and thier signals
-void start_sig_handles() {
+void start_sig_handling() {
   struct sigaction sa;
   sa.sa_handler = sigchild_handler;
   sigaction(SIGCHLD, &sa, NULL);
@@ -190,12 +189,11 @@ enum shell_actions StringtoEnum(const char* str) {
 }
 
 
+// TODO :: error checking and better logic flow
 void change_directory(const char *input) {
-
   if (chdir(input) == 0) {
-    printf("succesful change directory\n");
+    /* printf("succesful change directory\n"); */
   } else {
-    // TODO :: Error checking here for if dir exists or not
     perror("couldnt change directory");
   }
 }
@@ -242,14 +240,14 @@ void sigchild_handler(int signum) {
   }
 }
 
-// handle sigint signal
+// handle sigint signal :: kill the process
 void sigint_handler(int sig) {
   if(fg_pid > 0) {
     kill(fg_pid, SIGTERM);
   }
 }
 
-// handle sigstp signal 
+// handle sigstp signal :: wait the process
 void sigtstp_handler(int sig) {
-  // TODO :: implement handling here
+  waitpid(fg_pid, &sig, 0);
 }
