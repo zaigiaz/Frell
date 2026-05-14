@@ -1,7 +1,13 @@
 * Overview
 
 This is an implementation of a shell in C, I want to support basic File and Directory commands for now on linux
-and later on do more complicated shell commands, things like piping, Boolean expressions, redirection, etc.
+
+** TODO-List
+- Implement Piping
+- Handle Multi-Piping / Chain-Piping
+- Environment Variables
+
+** Resources
 
 Here are some resources that I am using:
 - Main Link :: https://valerius-petrini.vercel.app/blog/2025-06-29-fork-linux
