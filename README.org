@@ -3,9 +3,9 @@
 This is an implementation of a shell in C, I want to support basic File and Directory commands for now on linux
 
 ** TODO-List
-- Implement Piping
-- Handle Multi-Piping / Chain-Piping
+- Implement Piping (Mostly Done)
 - Environment Variables
+- Handle Multi-Piping / Chain-Piping
 
 ** Resources
 

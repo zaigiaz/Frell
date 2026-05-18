@@ -7,14 +7,26 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#define LENGTH 256
+#define INPUT_LENGTH 512
 #define SIG_NO_CUR_DIR 1
 #define MAX_JOBS 64
+
+// basic struct for commands logic
+typedef struct {
+  char args[64];
+  int argc;
+} Command;
+
+// struct containing tokenized input if pipe exists
+typedef struct {
+  Command commands[12];
+  int count;
+} Pipeline;
 
 // used to implement jobs
 typedef struct {
   pid_t pid;
-  char command[LENGTH];
+  char command[INPUT_LENGTH];
   bool running;
 } Job;
 
@@ -31,19 +43,21 @@ void sigchild_handler(int signum);
 void sigint_handler(int sig);
 void sigtstp_handler(int sig);
 void piping(const char* p1, const char* p2);
-
+int has_pipes(const char* input);
 
 Job jobs[MAX_JOBS];
 size_t job_count = 0;
 pid_t fg_pid = -1;
 
-// TODO :: review code and code structure, make header file?
-// TODO :: implement Piping
-// TODO :: implement env variables 
+
+// TODO :: Integrate comand and pipeline logic into parsing fully
+
+// FEATURE :: implement Piping
+// FEATURE :: implement env variables 
 
 int main() {
 
-  char input[LENGTH];
+  char input[INPUT_LENGTH];
   start_sig_handling();
 
   printf("------------------------------------------------\n");
@@ -54,9 +68,9 @@ int main() {
   // Main loop of program
   while(true) {
 
-    char buffer[LENGTH];
+    char buffer[INPUT_LENGTH];
 
-    if(getcwd(buffer, LENGTH) == NULL) {
+    if(getcwd(buffer, INPUT_LENGTH) == NULL) {
       perror("failed to get current directory");
       exit(SIG_NO_CUR_DIR);
     }
@@ -65,7 +79,7 @@ int main() {
     printf("[%s $] ", buffer);
 
     // read input
-    if(fgets(input, LENGTH, stdin) == NULL) {
+    if(fgets(input, INPUT_LENGTH, stdin) == NULL) {
       perror("failed to get standard input");
       exit(1);
     }
@@ -207,15 +221,15 @@ void add_job(pid_t pid, const char *cmd) {
   }
 
   jobs[job_count].pid = pid;
-  strncpy(jobs[job_count].command, cmd, LENGTH-1);
+  strncpy(jobs[job_count].command, cmd, INPUT_LENGTH-1);
   jobs[job_count].running = true;
   job_count++;
 }
 
 // if the command is a job then clean the '&' from it
 char *clean_job(const char *input) {
-  char *cmd_clean = malloc(LENGTH);
-  strncpy(cmd_clean, input, LENGTH-1);
+  char *cmd_clean = malloc(INPUT_LENGTH);
+  strncpy(cmd_clean, input, INPUT_LENGTH-1);
   if (cmd_clean[strlen(cmd_clean)-1] == '&') {
     cmd_clean[strlen(cmd_clean)-1] = '\0';
   }
@@ -255,51 +269,57 @@ void sigtstp_handler(int sig) {
 }
 
 // if the second argument is '|' then we take arg[0] and arg[1] and do basic pipe
-// NOTE :: doesnt support multi-piping
-void piping(const char* p1, const char* p2) {
+void piping(const char* cmd1, const char* cmd2) {
   int pipefd[2];
-  pid_t cpid;
-  char buf;
+  pid_t pid1, pid2;
 
- if (pipe(pipefd) == -1)          /* An error has occurred. */
-  {
-   fprintf(stderr, "%s", "The call to pipe() has failed.\n");           
-   exit(EXIT_FAILURE);
+  if (pipe(pipefd) == -1) {
+    perror("pipe");
+    exit(EXIT_FAILURE);
   }
 
- cpid = fork();
- 
- if (cpid == -1)                  /* An error has occurred. */
-  {
-   fprintf(stderr, "%s", "The call to fork() has failed.\n");
-   exit(EXIT_FAILURE);
+  /* First child process runs cmd1 */
+  pid1 = fork();
+  if (pid1 == -1) {
+    perror("fork");
+    exit(EXIT_FAILURE);
   }
 
- // if child process
- if (cpid == 0) 
-  {
-   close(pipefd[1]);              /* Close unused write end */
-   printf("The child is about to read from the pipe.\n");
-   while (read(pipefd[0], &buf, 1) > 0)
-     write(STDOUT_FILENO, &buf, 1);
-   write(STDOUT_FILENO, "\n", 1);
-   close(pipefd[0]);
-   printf("The child has just echoed from the pipe to standard output.\n");
-   _exit(EXIT_SUCCESS);
-  } 
-
- else 
-  {                               /* Parent writes argv[1] to pipe */
-   printf("I am the parent.\n");
-   close(pipefd[0]);              /* Close unused read end */
-   write(pipefd[1], p1, strlen(p1));
-   close(pipefd[1]);              /* Closing creates the EOF marker. */
-   printf("The parent has just written data into the pipe.\n");
-   printf("The parent will now wait for the child to terminate.\n");
-   wait(NULL);                    /* Parent waits for the child to terminate */
-   exit(EXIT_SUCCESS);
+  if (pid1 == 0) {
+    /* Child 1: redirect stdout to pipe write end */
+    close(pipefd[0]);                    /* Close read end */
+    dup2(pipefd[1], STDOUT_FILENO);      /* Redirect stdout */
+    close(pipefd[1]);
+    execlp("sh", "sh", "-c", cmd1, NULL); /* Execute first command */
+    perror("execlp");
+    exit(EXIT_FAILURE);
   }
 
-  return;
+  /* Second child process runs cmd2 */
+  pid2 = fork();
+  if (pid2 == -1) {
+    perror("fork");
+    exit(EXIT_FAILURE);
+  }
+
+  if (pid2 == 0) {
+    /* Child 2: redirect stdin from pipe read end */
+    close(pipefd[1]);                    /* Close write end */
+    dup2(pipefd[0], STDIN_FILENO);       /* Redirect stdin */
+    close(pipefd[0]);
+    execlp("sh", "sh", "-c", cmd2, NULL); /* Execute second command */
+    perror("execlp");
+    exit(EXIT_FAILURE);
+  }
+
+  /* Parent: close both ends and wait for children */
+  close(pipefd[0]);
+  close(pipefd[1]);
+  waitpid(pid1, NULL, 0);
+  waitpid(pid2, NULL, 0);
 }
 
+
+int has_pipes(const char* input) {
+  return strchr(input, '|') != NULL;
+}
