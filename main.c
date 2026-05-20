@@ -13,7 +13,7 @@
 
 // basic struct for commands logic
 typedef struct {
-  char args[64];
+  char* args[64];
   int argc;
 } Command;
 
@@ -24,6 +24,7 @@ typedef struct {
 } Pipeline;
 
 // used to implement jobs
+// change command -> Command
 typedef struct {
   pid_t pid;
   char command[INPUT_LENGTH];
@@ -32,7 +33,9 @@ typedef struct {
 
 enum shell_actions { QUIT, HELP };
 
-void other_actions(const char *input);
+Command parse_command(char* input);
+bool other_actions(const char *input);
+bool check_if_built_in(Command cmd);
 void change_directory(const char *input);
 bool if_background(const char* input);
 enum shell_actions StringtoEnum(const char* str);
@@ -89,47 +92,30 @@ int main() {
     if(length > 0 && input[length-1] == '\n') { 
       input[length-1] = '\0'; 
     }
-    
+       
     // actions you can take (util functions for shell)
-    other_actions(input);
+    if(other_actions(input)) {
+      continue;
+    }
 
     // check to see if background process
     bool bg = if_background(input);
     char *cleaned_cmd = clean_job(input);
 
-    // tokenize and parse input
-    char *args[64];
-    size_t arg_count = 0;
-    char *token = strtok(input, " ");
-
-    // get each argument for the command in input
-    while (token != NULL && arg_count < 63) {
-      args[arg_count++] = token;
-      token = strtok(NULL, " ");
-    }
-      
-    // null-terminate array
-    args[arg_count] = NULL;
+    // parse command into array
+    Command cmd = parse_command(input);
 
     // check if user hit enter and returned null input
-    if (args[0] == NULL) {
+    if(check_if_built_in(cmd)) {
+      size_t len = sizeof(input);
+      memset(input, 0x00, len);
       free(cleaned_cmd);
-      continue;
-    }
-
-    // check for cd and run
-    if (args[0] != NULL && strcmp(args[0], "cd") == 0) {
-      if (args[1]) {
-	change_directory(args[1]);
-      } else {
-	printf("cd: missing argument\n");
-      }
       continue;
     }
 
     pid_t pid = fork();
     if (pid == 0) {
-      execvp(args[0], args);
+      execvp(cmd.args[0], cmd.args);
       perror("exec failed");
       exit(1);
     }     
@@ -160,6 +146,25 @@ int main() {
   return 0;
 }
 
+Command parse_command(char* input) {
+  // tokenize and parse input
+    Command cmd;
+    size_t arg_count = 0;
+
+    char *token = strtok(input, " ");
+
+    // get each argument for the command in input
+    while (token != NULL && cmd.argc < 63) {
+      cmd.args[arg_count++] = token;
+      token = strtok(NULL, " ");
+    }
+      
+    // null-terminate array
+    cmd.args[arg_count] = NULL;
+
+    return cmd;
+}
+
 
 // handle all the sigaction structs and thier signals
 void start_sig_handling() {
@@ -182,16 +187,23 @@ bool if_background(const char* input) {
 }
 
 // Take shell input and convert to a command
-void other_actions(const char* input) {
+// return true to skip command loop
+// false to continue
+bool other_actions(const char* input) {
 
   int inputAction = StringtoEnum(input);
 
   switch (inputAction) {
-  case QUIT: perror("\nquitting shell\n"); exit(0);
+  case QUIT: 
+    perror("\nquitting shell\n"); exit(0);
+    return false;
     break;
-  case HELP: printf("\nCurrent shell works with basic UNIX commands, through execvp() function, no piping.\n");
+  case HELP:
+    printf("\nCurrent shell works with basic UNIX commands, through execvp() function, no piping.\n");    
+    return true;
     break;
   default: 
+    return false;
     break;
   }
 }
@@ -322,4 +334,23 @@ void piping(const char* cmd1, const char* cmd2) {
 
 int has_pipes(const char* input) {
   return strchr(input, '|') != NULL;
+}
+
+// checks the parsed command if first arg is built in like chdir or null
+bool check_if_built_in(Command cmd) {
+    
+    if (cmd.args[0] == NULL) {
+      return true;
+    }
+
+    // check for cd and run
+    if (cmd.args[0] != NULL && strcmp(cmd.args[0], "cd") == 0) {
+      if (cmd.args[1]) {
+	change_directory(cmd.args[1]);
+      } else {
+	printf("cd: missing argument\n");
+      }
+      return true;
+    }    
+    return false;
 }
