@@ -15,9 +15,13 @@ Here are some resources that I am using:
 - Pipes in C :: https://cs-uob.github.io/COMSM0085/exercises/part1/posix4/cpipe.html
 - Pipes in C :: https://faculty.cs.niu.edu/~hutchins/csci480/linuxpipe.htm
 
-* Next Steps
+** Rewrite
 
-- new exec func? https://linux.die.net/man/2/execve
-- Try experimenting with different exec variants like execlp.
-- Implement piping with |, where the output of one command is the input for another. To implement piping, you'll need to use pipe() and dup2() to redirect output from one command to the input of another.
-- Environment Variables
+I need to rewrite this to be more like what it actually is, an
+interpreter for sh/bash. This would include actual lexing/parsing and AST for
+basic Piping and input redirection. I would still include the basic handling of syscalls
+like chdir() inline with my code but would handle everything else with actual AST.
+
+I also need to rewrite my piping function to be more concise as its pretty messy right now.
+
+I need one monolithic signal handling function/method as well rather than 5 different functions.
