@@ -25,3 +25,6 @@ like chdir() inline with my code but would handle everything else with actual AS
 I also need to rewrite my piping function to be more concise as its pretty messy right now.
 
 I need one monolithic signal handling function/method as well rather than 5 different functions.
+
+
+The rewrite is happening inside the bin_tree file where I am implementing my own Binary AST to parse and handle the parsing logic
